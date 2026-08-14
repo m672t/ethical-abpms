@@ -311,7 +311,7 @@ with tab3:
                         
                         # تولید BPMN از Process Tree واقعی
                         bpmn_path = generator.generate(
-                            process_model,
+                            discovered_model,
                             ethical_notes=ethical_notes,
                             corrections=corrections,
                             output_path="outputs/ethical_process.bpmn"
