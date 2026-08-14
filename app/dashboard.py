@@ -323,8 +323,7 @@ with tab3:
                             with open(bpmn_path, 'r', encoding='utf-8') as f:
                                 bpmn_data = f.read()
                             
-                            # نمایش اطلاعات آماری
-                            st.info(f"📊 تعداد المان‌های تولید شده: {len(generator.elements)}")
+                            st.info("📊 فایل BPMN 2.0 با موفقیت تولید شد.")
                             
                             # دکمه دانلود
                             b64 = base64.b64encode(bpmn_data.encode()).decode()
