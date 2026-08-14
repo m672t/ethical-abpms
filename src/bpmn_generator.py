@@ -1,244 +1,828 @@
 """
-ماژول تولید BPMN 2.0 از Process Tree واقعی
+BPMN 2.0 Generator
+
+تبدیل واقعی Process Tree حاصل از PM4Py
+به BPMN 2.0 XML
+
+پشتیبانی:
+- SEQUENCE
+- XOR
+- AND
+- LOOP
+- Task
+- Start Event
+- End Event
+- BPMN Documentation
+- BPMN DI
 """
 
 import os
+import re
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-import re
+
 
 class BPMNGenerator:
-    """تولید فایل BPMN 2.0 از Process Tree کشف‌شده توسط pm4py"""
-    
-    def __init__(self, process_name="EthicalProcess"):
-        self.process_name = re.sub(r'[^a-zA-Z0-9_]', '_', process_name)
-        self.ns = {
-            'bpmn': 'http://www.omg.org/spec/BPMN/20100524/MODEL',
-            'bpmndi': 'http://www.omg.org/spec/BPMN/20100524/DI',
-            'dc': 'http://www.omg.org/spec/DD/20100524/DC',
-            'di': 'http://www.omg.org/spec/DD/20100524/DI'
-        }
+
+    BPMN_NS = (
+        "http://www.omg.org/spec/BPMN/20100524/MODEL"
+    )
+
+    BPMNDI_NS = (
+        "http://www.omg.org/spec/BPMN/20100524/DI"
+    )
+
+    DC_NS = (
+        "http://www.omg.org/spec/DD/20100524/DC"
+    )
+
+    DI_NS = (
+        "http://www.omg.org/spec/DD/20100524/DI"
+    )
+
+    def __init__(
+        self,
+        process_name="EthicalProcess"
+    ):
+
+        self.process_name = self._clean_id(
+            process_name
+        )
+
         self.node_counter = 0
         self.flow_counter = 0
+
+        self.root = None
         self.process = None
+
         self.elements = {}
-        self.connections = []
-        
+        self.flows = []
+
+        # موقعیت‌ها
+        self.positions = {}
+
+    # ============================================================
+    # ID
+    # ============================================================
+
     def _clean_id(self, text):
-        """تبدیل نام به ID معتبر BPMN"""
-        clean = re.sub(r'[^a-zA-Z0-9_]', '_', text)
-        if clean and clean[0].isdigit():
-            clean = 'id_' + clean
-        return clean
-    
+
+        text = re.sub(
+            r"[^a-zA-Z0-9_]",
+            "_",
+            str(text)
+        )
+
+        if not text:
+            text = "Process"
+
+        if text[0].isdigit():
+            text = "id_" + text
+
+        return text
+
     def _new_id(self, prefix):
-        """تولید ID یکتا"""
+
         self.node_counter += 1
-        return f"{prefix}_{self.node_counter:03d}"
-    
-    def _add_element(self, parent, tag, attrs=None):
-        """افزودن المان به فرآیند با ID خودکار"""
-        if attrs is None:
-            attrs = {}
-        if 'id' not in attrs:
-            attrs['id'] = self._new_id(tag.split(':')[-1])
-        elem = ET.SubElement(parent, tag, attrs)
-        return elem
-    
-    def _add_flow(self, source, target):
-        """افزودن sequenceFlow بین دو المان"""
-        flow_id = f"Flow_{self.flow_counter:03d}"
+
+        return (
+            f"{prefix}_{self.node_counter:03d}"
+        )
+
+    # ============================================================
+    # ELEMENTS
+    # ============================================================
+
+    def _add_element(
+        self,
+        tag,
+        attrs
+    ):
+
+        if "id" not in attrs:
+            attrs["id"] = self._new_id(
+                tag.split(":")[-1]
+            )
+
+        element = ET.SubElement(
+            self.process,
+            tag,
+            attrs
+        )
+
+        self.elements[
+            attrs["id"]
+        ] = element
+
+        return attrs["id"]
+
+    # ============================================================
+    # DOCUMENTATION
+    # ============================================================
+
+    def _add_documentation(
+        self,
+        element_id,
+        text
+    ):
+
+        if not text:
+            return
+
+        element = self.elements.get(
+            element_id
+        )
+
+        if element is None:
+            return
+
+        documentation = ET.SubElement(
+            element,
+            "bpmn:documentation"
+        )
+
+        documentation.text = str(text)
+
+    # ============================================================
+    # FLOW
+    # ============================================================
+
+    def _add_flow(
+        self,
+        source,
+        target,
+        name=None
+    ):
+
         self.flow_counter += 1
-        flow = ET.SubElement(self.process, 'bpmn:sequenceFlow', {
-            'id': flow_id,
-            'sourceRef': source,
-            'targetRef': target
-        })
-        return flow
-    
-    def _convert_process_tree(self, parent_element, tree_node):
-        """
-        تبدیل recursive Process Tree به عناصر BPMN
-        """
-        # تشخیص نوع گره
-        node_type = tree_node._operator if hasattr(tree_node, '_operator') else None
-        
-        if node_type is None:  # فعالیت (Leaf)
-            # ایجاد Task
-            task = ET.SubElement(self.process, 'bpmn:task', {
-                'id': self._new_id('Activity'),
-                'name': tree_node.label if hasattr(tree_node, 'label') else str(tree_node)
-            })
-            self.elements[task.get('id')] = task
-            return task.get('id')
-        
-        elif node_type == 'sequence':  # توالی
-            # XOR Gateway (محلی) برای کنترل توالی
-            gateway = ET.SubElement(self.process, 'bpmn:exclusiveGateway', {
-                'id': self._new_id('Gateway'),
-                'gatewayDirection': 'Converging'
-            })
-            self.elements[gateway.get('id')] = gateway
-            
-            last_id = gateway.get('id')
-            for child in tree_node._children:
-                child_id = self._convert_process_tree(parent_element, child)
-                # اتصال از گیت‌وی به اولین child
-                self._add_flow(last_id, child_id)
-                last_id = child_id
-            
-            return gateway.get('id')
-        
-        elif node_type == 'xor':  # XOR (انتخاب)
-            # Exclusive Gateway (شاخه‌ها)
-            gateway = ET.SubElement(self.process, 'bpmn:exclusiveGateway', {
-                'id': self._new_id('Gateway'),
-                'gatewayDirection': 'Diverging'
-            })
-            self.elements[gateway.get('id')] = gateway
-            
-            for child in tree_node._children:
-                child_id = self._convert_process_tree(parent_element, child)
-                # اتصال از گیت‌وی به هر child (با شرط)
-                self._add_flow(gateway.get('id'), child_id)
-            
-            return gateway.get('id')
-        
-        elif node_type == 'and':  # AND (همزمان)
-            # Parallel Gateway
-            gateway = ET.SubElement(self.process, 'bpmn:parallelGateway', {
-                'id': self._new_id('Gateway'),
-                'gatewayDirection': 'Diverging'
-            })
-            self.elements[gateway.get('id')] = gateway
-            
-            for child in tree_node._children:
-                child_id = self._convert_process_tree(parent_element, child)
-                self._add_flow(gateway.get('id'), child_id)
-            
-            return gateway.get('id')
-        
-        elif node_type == 'loop':  # حلقه
-            # XOR Gateway با مسیر برگشتی
-            start_gateway = ET.SubElement(self.process, 'bpmn:exclusiveGateway', {
-                'id': self._new_id('Gateway'),
-                'gatewayDirection': 'Diverging'
-            })
-            self.elements[start_gateway.get('id')] = start_gateway
-            
-            # بدن حلقه
-            body_id = self._convert_process_tree(parent_element, tree_node._children[0])
-            
-            # گیت‌وی خاتمه
-            end_gateway = ET.SubElement(self.process, 'bpmn:exclusiveGateway', {
-                'id': self._new_id('Gateway'),
-                'gatewayDirection': 'Converging'
-            })
-            self.elements[end_gateway.get('id')] = end_gateway
-            
-            # اتصال start → body → end
-            self._add_flow(start_gateway.get('id'), body_id)
-            self._add_flow(body_id, end_gateway.get('id'))
-            
-            # مسیر بازگشت (حلقه)
-            self._add_flow(end_gateway.get('id'), start_gateway.get('id'))
-            
-            return start_gateway.get('id')
-        
-        else:
-            # Fallback: فقط child اول رو برگردون
-            if hasattr(tree_node, '_children') and tree_node._children:
-                return self._convert_process_tree(parent_element, tree_node._children[0])
+
+        flow_id = (
+            f"Flow_{self.flow_counter:03d}"
+        )
+
+        attrs = {
+            "id": flow_id,
+            "sourceRef": source,
+            "targetRef": target
+        }
+
+        if name:
+            attrs["name"] = str(name)
+
+        flow = ET.SubElement(
+            self.process,
+            "bpmn:sequenceFlow",
+            attrs
+        )
+
+        self.flows.append(
+            (
+                flow_id,
+                source,
+                target
+            )
+        )
+
+        return flow_id
+
+    # ============================================================
+    # PROCESS TREE TYPE
+    # ============================================================
+
+    def _operator_name(
+        self,
+        node
+    ):
+
+        operator = getattr(
+            node,
+            "operator",
+            None
+        )
+
+        if operator is None:
+            operator = getattr(
+                node,
+                "_operator",
+                None
+            )
+
+        if operator is None:
             return None
-    
-    def generate(self, process_tree, ethical_notes=None, output_path="output/process_model.bpmn"):
+
+        value = getattr(
+            operator,
+            "name",
+            str(operator)
+        )
+
+        value = str(value).lower()
+
+        if "sequence" in value:
+            return "sequence"
+
+        if "xor" in value:
+            return "xor"
+
+        if "parallel" in value:
+            return "and"
+
+        if value == "and":
+            return "and"
+
+        if "loop" in value:
+            return "loop"
+
+        return value
+
+    def _children(
+        self,
+        node
+    ):
+
+        children = getattr(
+            node,
+            "children",
+            None
+        )
+
+        if children is None:
+            children = getattr(
+                node,
+                "_children",
+                []
+            )
+
+        return list(children)
+
+    def _label(
+        self,
+        node
+    ):
+
+        label = getattr(
+            node,
+            "label",
+            None
+        )
+
+        if label is None:
+            label = str(node)
+
+        return str(label)
+
+    # ============================================================
+    # PROCESS TREE → BPMN
+    # ============================================================
+
+    def _convert_tree(
+        self,
+        node
+    ):
         """
-        تولید فایل BPMN 2.0 از Process Tree
+        تبدیل یک Node از Process Tree
+        به یک fragment از BPMN.
+
+        خروجی:
+            (entry_node, exit_nodes)
         """
-        if ethical_notes is None:
-            ethical_notes = {}
-        
-        # ریشه BPMN
-        root = ET.Element('bpmn:definitions', {
-            'xmlns:bpmn': self.ns['bpmn'],
-            'xmlns:bpmndi': self.ns['bpmndi'],
-            'xmlns:dc': self.ns['dc'],
-            'xmlns:di': self.ns['di'],
-            'targetNamespace': 'http://bpmn.io/schema/bpmn',
-            'id': 'Definitions_1'
-        })
-        
+
+        operator = self._operator_name(
+            node
+        )
+
+        children = self._children(
+            node
+        )
+
+        # --------------------------------------------------------
+        # LEAF = TASK
+        # --------------------------------------------------------
+
+        if operator is None:
+
+            task_id = self._add_element(
+                "bpmn:task",
+                {
+                    "id": self._new_id(
+                        "Activity"
+                    ),
+                    "name": self._label(node)
+                }
+            )
+
+            return task_id, [task_id]
+
+        # --------------------------------------------------------
+        # SEQUENCE
+        # --------------------------------------------------------
+
+        if operator == "sequence":
+
+            if not children:
+                return None, []
+
+            fragments = [
+                self._convert_tree(child)
+                for child in children
+            ]
+
+            entry = fragments[0][0]
+
+            previous_exits = fragments[0][1]
+
+            for entry_child, exits_child in fragments[1:]:
+
+                if entry_child is None:
+                    continue
+
+                for previous in previous_exits:
+
+                    self._add_flow(
+                        previous,
+                        entry_child
+                    )
+
+                previous_exits = exits_child
+
+            return (
+                entry,
+                previous_exits
+            )
+
+        # --------------------------------------------------------
+        # XOR
+        # --------------------------------------------------------
+
+        if operator == "xor":
+
+            gateway_id = self._add_element(
+                "bpmn:exclusiveGateway",
+                {
+                    "id": self._new_id(
+                        "ExclusiveGateway"
+                    ),
+                    "gatewayDirection":
+                        "Diverging"
+                }
+            )
+
+            exits = []
+
+            for child in children:
+
+                child_entry, child_exits = (
+                    self._convert_tree(child)
+                )
+
+                if child_entry is None:
+                    continue
+
+                self._add_flow(
+                    gateway_id,
+                    child_entry
+                )
+
+                exits.extend(
+                    child_exits
+                )
+
+            return gateway_id, exits
+
+        # --------------------------------------------------------
+        # AND / PARALLEL
+        # --------------------------------------------------------
+
+        if operator == "and":
+
+            gateway_id = self._add_element(
+                "bpmn:parallelGateway",
+                {
+                    "id": self._new_id(
+                        "ParallelGateway"
+                    ),
+                    "gatewayDirection":
+                        "Diverging"
+                }
+            )
+
+            exits = []
+
+            for child in children:
+
+                child_entry, child_exits = (
+                    self._convert_tree(child)
+                )
+
+                if child_entry is None:
+                    continue
+
+                self._add_flow(
+                    gateway_id,
+                    child_entry
+                )
+
+                exits.extend(
+                    child_exits
+                )
+
+            return gateway_id, exits
+
+        # --------------------------------------------------------
+        # LOOP
+        # --------------------------------------------------------
+
+        if operator == "loop":
+
+            if not children:
+                return None, []
+
+            body_entry, body_exits = (
+                self._convert_tree(
+                    children[0]
+                )
+            )
+
+            if body_entry is None:
+                return None, []
+
+            gateway_id = self._add_element(
+                "bpmn:exclusiveGateway",
+                {
+                    "id": self._new_id(
+                        "LoopGateway"
+                    ),
+                    "gatewayDirection":
+                        "Diverging"
+                }
+            )
+
+            self._add_flow(
+                gateway_id,
+                body_entry,
+                "ادامه حلقه"
+            )
+
+            # مسیر برگشت
+            for exit_node in body_exits:
+
+                self._add_flow(
+                    exit_node,
+                    gateway_id,
+                    "تکرار"
+                )
+
+            return (
+                gateway_id,
+                [gateway_id]
+            )
+
+        # --------------------------------------------------------
+        # UNKNOWN
+        # --------------------------------------------------------
+
+        if children:
+
+            return self._convert_tree(
+                children[0]
+            )
+
+        return None, []
+
+    # ============================================================
+    # ETHICAL GATEWAYS
+    # ============================================================
+
+    def _add_ethical_documentation(
+        self,
+        ethical_notes
+    ):
+
+        if not ethical_notes:
+            return
+
+        for element_id, element in self.elements.items():
+
+            name = element.get(
+                "name",
+                ""
+            )
+
+            if name in ethical_notes:
+
+                self._add_documentation(
+                    element_id,
+                    ethical_notes[name]
+                )
+
+    # ============================================================
+    # BPMN DI
+    # ============================================================
+
+    def _create_diagram(self):
+
+        diagram = ET.SubElement(
+            self.root,
+            "bpmndi:BPMNDiagram",
+            {
+                "id":
+                    "BPMNDiagram_1"
+            }
+        )
+
+        plane = ET.SubElement(
+            diagram,
+            "bpmndi:BPMNPlane",
+            {
+                "id":
+                    "BPMNPlane_1",
+                "bpmnElement":
+                    self.process.get("id")
+            }
+        )
+
+        # --------------------------------------------------------
+        # Node positions
+        # --------------------------------------------------------
+
+        x = 100
+        y = 200
+
+        for element_id, element in (
+            self.elements.items()
+        ):
+
+            tag = element.tag.split(
+                "}"
+            )[-1]
+
+            if "Gateway" in element_id:
+                width = 50
+                height = 50
+
+            elif tag in [
+                "startEvent",
+                "endEvent"
+            ]:
+                width = 36
+                height = 36
+
+            else:
+                width = 120
+                height = 80
+
+            shape = ET.SubElement(
+                plane,
+                "bpmndi:BPMNShape",
+                {
+                    "id":
+                        f"BPMNShape_{element_id}",
+                    "bpmnElement":
+                        element_id
+                }
+            )
+
+            ET.SubElement(
+                shape,
+                "dc:Bounds",
+                {
+                    "x": str(x),
+                    "y": str(y),
+                    "width": str(width),
+                    "height": str(height)
+                }
+            )
+
+            x += 180
+
+            if x > 1300:
+                x = 100
+                y += 150
+
+        # --------------------------------------------------------
+        # Flow DI
+        # --------------------------------------------------------
+
+        for flow_id, source, target in self.flows:
+
+            edge = ET.SubElement(
+                plane,
+                "bpmndi:BPMNEdge",
+                {
+                    "id":
+                        f"BPMNEdge_{flow_id}",
+                    "bpmnElement":
+                        flow_id
+                }
+            )
+
+            # برای Import شدن BPMN
+            # Waypointهای ساده ایجاد می‌کنیم.
+            ET.SubElement(
+                edge,
+                "di:waypoint",
+                {
+                    "x": "100",
+                    "y": "200"
+                }
+            )
+
+            ET.SubElement(
+                edge,
+                "di:waypoint",
+                {
+                    "x": "200",
+                    "y": "200"
+                }
+            )
+
+    # ============================================================
+    # GENERATE
+    # ============================================================
+
+    def generate(
+        self,
+        process_tree,
+        ethical_notes=None,
+        output_path=
+            "output/process_model_ethical.bpmn"
+    ):
+        """
+        تولید BPMN 2.0 XML واقعی از Process Tree.
+        """
+
+        if process_tree is None:
+
+            raise ValueError(
+                "Process Tree وجود ندارد."
+            )
+
+        ethical_notes = (
+            ethical_notes or {}
+        )
+
+        # Namespace
+        ET.register_namespace(
+            "bpmn",
+            self.BPMN_NS
+        )
+
+        ET.register_namespace(
+            "bpmndi",
+            self.BPMNDI_NS
+        )
+
+        ET.register_namespace(
+            "dc",
+            self.DC_NS
+        )
+
+        ET.register_namespace(
+            "di",
+            self.DI_NS
+        )
+
+        # --------------------------------------------------------
+        # Definitions
+        # --------------------------------------------------------
+
+        self.root = ET.Element(
+            "bpmn:definitions",
+            {
+                "id":
+                    "Definitions_1",
+                "targetNamespace":
+                    "http://bpmn.io/schema/bpmn"
+            }
+        )
+
+        # --------------------------------------------------------
         # Process
-        process_id = f'Process_{self.process_name}'
-        self.process = ET.SubElement(root, 'bpmn:process', {
-            'id': process_id,
-            'isExecutable': 'true',
-            'name': self.process_name
-        })
-        
-        # Start Event
-        start_id = self._new_id('StartEvent')
-        start = ET.SubElement(self.process, 'bpmn:startEvent', {
-            'id': start_id,
-            'name': 'شروع'
-        })
-        self.elements[start_id] = start
-        
-        # تبدیل Process Tree
-        last_id = start_id
-        if process_tree is not None:
-            tree_id = self._convert_process_tree(self.process, process_tree)
-            if tree_id:
-                self._add_flow(last_id, tree_id)
-                last_id = tree_id
-        
-        # End Event
-        end_id = self._new_id('EndEvent')
-        end = ET.SubElement(self.process, 'bpmn:endEvent', {
-            'id': end_id,
-            'name': 'پایان'
-        })
-        self.elements[end_id] = end
-        self._add_flow(last_id, end_id)
-        
-        # اضافه کردن برچسب‌های اخلاقی (Documentation)
-        for elem_id, elem in self.elements.items():
-            if elem.tag == 'bpmn:task' and elem.get('name') in ethical_notes:
-                doc = ET.SubElement(elem, 'bpmn:documentation')
-                doc.text = ethical_notes[elem.get('name')]
-        
-        # BPMN DI (موقعیت‌ها)
-        bpmndi = ET.SubElement(root, 'bpmndi:BPMNDiagram', {'id': 'BPMNDiagram_1'})
-        plane = ET.SubElement(bpmndi, 'bpmndi:BPMNPlane', {
-            'id': 'BPMNPlane_1',
-            'bpmnElement': process_id
-        })
-        
-        # موقعیت‌دهی ساده (می‌توانید بهینه کنید)
-        for i, (elem_id, elem) in enumerate(self.elements.items()):
-            shape = ET.SubElement(plane, 'bpmndi:BPMNShape', {
-                'id': f'BPMNShape_{elem_id}',
-                'bpmnElement': elem_id
-            })
-            bounds = ET.SubElement(shape, 'dc:Bounds', {
-                'x': str(100 + i * 120),
-                'y': '200',
-                'width': '100',
-                'height': '80'
-            })
-        
-        # ذخیره فایل
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        xml_str = ET.tostring(root, encoding='utf-8')
-        dom = minidom.parseString(xml_str)
-        pretty_xml = dom.toprettyxml(indent="  ")
-        
-        # حذف خط اول اضافی
-        lines = pretty_xml.split('\n')
-        if lines and lines[0].strip().startswith('<?xml'):
-            pretty_xml = '\n'.join(lines[1:])
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(pretty_xml)
-        
+        # --------------------------------------------------------
+
+        process_id = (
+            f"Process_{self.process_name}"
+        )
+
+        self.process = ET.SubElement(
+            self.root,
+            "bpmn:process",
+            {
+                "id":
+                    process_id,
+                "name":
+                    self.process_name,
+                "isExecutable":
+                    "true"
+            }
+        )
+
+        # --------------------------------------------------------
+        # Start
+        # --------------------------------------------------------
+
+        start_id = self._add_element(
+            "bpmn:startEvent",
+            {
+                "id":
+                    "StartEvent_1",
+                "name":
+                    "شروع"
+            }
+        )
+
+        # --------------------------------------------------------
+        # Process Tree
+        # --------------------------------------------------------
+
+        entry_id, exit_ids = (
+            self._convert_tree(
+                process_tree
+            )
+        )
+
+        if entry_id is None:
+            raise ValueError(
+                "Process Tree به BPMN تبدیل نشد."
+            )
+
+        # Start → Process
+        self._add_flow(
+            start_id,
+            entry_id
+        )
+
+        # --------------------------------------------------------
+        # End
+        # --------------------------------------------------------
+
+        end_id = self._add_element(
+            "bpmn:endEvent",
+            {
+                "id":
+                    "EndEvent_1",
+                "name":
+                    "پایان"
+            }
+        )
+
+        # Process → End
+        for exit_id in exit_ids:
+
+            self._add_flow(
+                exit_id,
+                end_id
+            )
+
+        # --------------------------------------------------------
+        # Ethical Documentation
+        # --------------------------------------------------------
+
+        self._add_ethical_documentation(
+            ethical_notes
+        )
+
+        # --------------------------------------------------------
+        # BPMN DI
+        # --------------------------------------------------------
+
+        self._create_diagram()
+
+        # --------------------------------------------------------
+        # Save
+        # --------------------------------------------------------
+
+        directory = os.path.dirname(
+            output_path
+        )
+
+        if directory:
+            os.makedirs(
+                directory,
+                exist_ok=True
+            )
+
+        xml_bytes = ET.tostring(
+            self.root,
+            encoding="utf-8"
+        )
+
+        dom = minidom.parseString(
+            xml_bytes
+        )
+
+        pretty_xml = dom.toprettyxml(
+            indent="  ",
+            encoding="utf-8"
+        )
+
+        with open(
+            output_path,
+            "wb"
+        ) as file:
+
+            file.write(
+                pretty_xml
+            )
+
         return output_path
