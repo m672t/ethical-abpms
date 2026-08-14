@@ -1,0 +1,28 @@
+{
+  "rules": {
+    "fairness": {
+      "name": "عدالت",
+      "description": "عدم تبعیض بر اساس متغیرهای حساس",
+      "sensitive_attributes": ["gender", "ethnicity", "race", "جنسیت", "قومیت"],
+      "thresholds": {
+        "gender_bias": 0.2,
+        "regional_bias": 0.25
+      }
+    },
+    "transparency": {
+      "name": "شفافیت",
+      "description": "دلایل تصمیم‌گیری باید قابل توضیح باشد",
+      "required_fields": ["decision_explanation", "explanation"]
+    },
+    "appealability": {
+      "name": "قابلیت اعتراض",
+      "description": "کاربر باید بتواند درخواست بازبینی دهد",
+      "required_activities": ["بازبینی", "اعتراض", "تجدید نظر", "appeal", "review"]
+    },
+    "privacy": {
+      "name": "حریم خصوصی",
+      "description": "داده‌های حساس نباید نمایش داده شوند",
+      "sensitive_fields": ["national_id", "phone", "email", "gender", "birth_date", "zip_code"]
+    }
+  }
+}
