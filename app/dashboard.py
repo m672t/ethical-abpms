@@ -311,11 +311,11 @@ with tab3:
                         
                         # تولید BPMN از Process Tree واقعی
                         bpmn_path = generator.generate(
-                            discovered_model,
+                            process_tree,
                             ethical_notes=ethical_notes,
-                            corrections=corrections,
+                            corrections=st.session_state.get('corrections', {}),
                             output_path="outputs/ethical_process.bpmn"
-                        )
+                        ) 
                         
                         if os.path.exists(bpmn_path):
                             st.success("✅ فایل BPMN 2.0 با موفقیت از Process Tree تولید شد!")
