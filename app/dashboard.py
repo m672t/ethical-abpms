@@ -245,7 +245,11 @@ with tab3:
                         if corrections['new_activities']:
                             st.subheader("➕ فعالیت‌های جدید اضافه‌شده:")
                             for act in corrections['new_activities']:
-                                st.info(f"🆕 {act['name']}: {act['description']} (موقعیت: {act['position']})")
+                                st.info(
+                                     f"🆕 {act['name']}: "
+                                     f"{act.get('description', '')} "
+                                     f"(موقعیت: {act.get('position', 'در فرآیند اصلاح‌شده')})"
+                                        )
                         
                         corrected_model = corrector.generate_corrected_model(
                             st.session_state['discoverer'],
