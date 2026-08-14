@@ -48,7 +48,8 @@ class BPMNGenerator:
     DI_NS = "http://www.omg.org/spec/DD/20100524/DI"
     XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 
-    def __init__(self):
+    def __init__(self, process_name="EthicalProcess"):
+        self.process_name = process_name
         self.nodes: Dict[str, Dict[str, Any]] = {}
         self.flows: List[Dict[str, Any]] = []
 
