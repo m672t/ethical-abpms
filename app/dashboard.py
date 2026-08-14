@@ -279,7 +279,7 @@ with tab3:
             if st.button("📥 تولید و دانلود BPMN", use_container_width=True):
                 with st.spinner("در حال تولید فایل BPMN از ساختار واقعی Process Tree..."):
                     try:
-                        generator = BPMNGenerator("EthicalProcess")
+                        generator = BPMNGenerator()
                         
                         # گرفتن Process Tree از discoverer
                         process_tree = st.session_state['discoverer'].process_tree
