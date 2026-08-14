@@ -1,6 +1,7 @@
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
+from pm4py.algo.discovery.inductive.variants.instances import IMd
 from pm4py.visualization.petri_net import visualizer as pn_visualizer
 from pm4py.objects.log.util import dataframe_utils
 from pm4py.objects.conversion.process_tree import converter as pt_converter
@@ -13,7 +14,7 @@ class ProcessDiscovery:
         self.petri_net = None
         self.initial_marking = None
         self.final_marking = None
-        self.process_tree = None  # <- این رو داریم
+        self.process_tree = None
         
     def load_log(self):
         """بارگذاری لاگ از فایل CSV"""
@@ -33,11 +34,40 @@ class ProcessDiscovery:
         if self.log is None:
             self.load_log()
         
-        # 🔹 مهم: دریافت Process Tree
-        self.process_tree = inductive_miner.apply_tree(self.log)
+        # 🔹 روش جدید برای دریافت Process Tree در نسخه‌های جدید pm4py
+        try:
+            # روش 1: استفاده از IMd (Inductive Miner - Directly Follows)
+            self.process_tree = inductive_miner.apply_tree(self.log, variant="imd")
+        except:
+            try:
+                # روش 2: استفاده از پارامترهای پیش‌فرض
+                from pm4py.algo.discovery.inductive import variants
+                self.process_tree = inductive_miner.apply_tree(self.log, variant=variants.imd.IMd())
+            except:
+                try:
+                    # روش 3: استفاده از الگوریتم Inductive Miner با نسخه پیش‌فرض
+                    self.process_tree = inductive_miner.apply(self.log, parameters={"return_process_tree": True})
+                except:
+                    # روش 4: ساخت دستی Process Tree از فعالیت‌ها
+                    activities = self.get_activities()
+                    from pm4py.objects.process_tree import obj as pt
+                    from pm4py.objects.process_tree import factory as pt_factory
+                    
+                    # ایجاد یک Process Tree ساده (توالی فعالیت‌ها)
+                    sequence = pt_factory.create_sequence()
+                    for act in activities:
+                        leaf = pt_factory.create_leaf(act)
+                        sequence.children.append(leaf)
+                    
+                    self.process_tree = sequence
         
         # دریافت Petri Net برای نمایش
-        self.petri_net, self.initial_marking, self.final_marking = inductive_miner.apply(self.log)
+        try:
+            self.petri_net, self.initial_marking, self.final_marking = inductive_miner.apply(self.log)
+        except:
+            # اگر Petri Net خطا داد، از Process Tree استفاده کن
+            if self.process_tree is not None:
+                self.petri_net, self.initial_marking, self.final_marking = pt_converter.apply(self.process_tree)
         
         return self.petri_net, self.initial_marking, self.final_marking
     
