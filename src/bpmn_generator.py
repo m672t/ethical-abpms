@@ -378,458 +378,604 @@ class BPMNGenerator:
     # ============================================================
 
     def _build_ethical_process(
-        self,
-        activities: List[str],
-        corrections: Dict[str, Any],
-        ethical_notes: Optional[Any],
-    ) -> Tuple[str, str]:
+     self,
+     activities: List[str],
+     corrections: Dict[str, Any],
+     ethical_notes: Optional[Any],
+     ) -> Tuple[str, str]:
 
-        # --------------------------------------------------------
-        # حذف فعالیت‌هایی که Corrector حذف کرده
-        # --------------------------------------------------------
+    # ========================================================
+    # حذف فعالیت‌هایی که Corrector حذف کرده است
+    # ========================================================
 
-        removed = set()
+     removed = set()
 
-        for item in corrections.get("removed_activities", []):
-            if isinstance(item, str):
-                removed.add(item)
+     for item in corrections.get("removed_activities", []):
+        if isinstance(item, str):
+            removed.add(item)
 
-            elif isinstance(item, dict):
-                if item.get("name"):
-                    removed.add(item["name"])
+        elif isinstance(item, dict):
+            if item.get("name"):
+                removed.add(item["name"])
 
-        activities = [
-            a for a in activities
-            if a not in removed
-        ]
+     activities = [
+        a for a in activities
+        if a not in removed
+    ]
 
-        # --------------------------------------------------------
-        # فعالیت‌های اخلاقی مورد نیاز
-        # --------------------------------------------------------
+    # ========================================================
+    # فعالیت‌های جدید Corrector
+    # ========================================================
 
-        new_names = []
+     new_names = []
 
-        for item in corrections.get("new_activities", []):
-            if isinstance(item, str):
-                new_names.append(item)
+     for item in corrections.get("new_activities", []):
 
-            elif isinstance(item, dict):
-                name = item.get("name")
+        if isinstance(item, str):
+            new_names.append(item)
 
-                if name:
-                    new_names.append(name)
+        elif isinstance(item, dict):
+            name = item.get("name")
 
-        # --------------------------------------------------------
-        # تشخیص تخلفات از model_corrections
-        # --------------------------------------------------------
+            if name:
+                new_names.append(name)
 
-        fairness_violation = False
-        appeal_violation = False
-        transparency_violation = False
-        privacy_violation = False
+    # ========================================================
+    # تشخیص تخلفات اخلاقی
+    # ========================================================
 
-        for correction in corrections.get("model_corrections", []):
+     fairness_violation = False
+     appeal_violation = False
+     transparency_violation = False
+     privacy_violation = False
 
-            rule = correction.get("rule", "")
+     for correction in corrections.get("model_corrections", []):
 
-            violation_type = correction.get(
-                "type",
-                ""
-            )
+        rule = correction.get("rule", "")
 
-            if rule == "عدالت":
-                fairness_violation = True
-
-            if rule == "قابلیت اعتراض":
-                appeal_violation = True
-
-            if rule == "شفافیت":
-                transparency_violation = True
-
-            if rule == "حریم خصوصی":
-                privacy_violation = True
-
-        # --------------------------------------------------------
-        # براساس نام فعالیت‌های جدید هم تشخیص بده
-        # --------------------------------------------------------
-
-        if "بررسی تبعیض" in new_names:
+        if rule == "عدالت":
             fairness_violation = True
 
-        if "درخواست بازبینی" in new_names:
+        elif rule == "قابلیت اعتراض":
             appeal_violation = True
 
-        if "بازبینی درخواست" in new_names:
+        elif rule == "شفافیت":
+            transparency_violation = True
+
+        elif rule == "حریم خصوصی":
+            privacy_violation = True
+
+    # ========================================================
+    # تشخیص از روی فعالیت‌های جدید
+    # ========================================================
+
+     if "بررسی تبعیض" in new_names:
+        fairness_violation = True
+
+     if "درخواست بازبینی" in new_names:
+        appeal_violation = True
+
+     if "بازبینی درخواست" in new_names:
+        appeal_violation = True
+
+    # ========================================================
+    # تشخیص از ethical_notes
+    # ========================================================
+
+     if ethical_notes:
+
+        notes_text = str(ethical_notes)
+
+        if "تبعیض" in notes_text:
+            fairness_violation = True
+
+        if "بازبینی" in notes_text or "اعتراض" in notes_text:
             appeal_violation = True
 
-        # --------------------------------------------------------
-        # اگر Corrector چیزی نفرستاده ولی ethical_notes شامل
-        # تخلف باشد، آن را نیز بررسی کن
-        # --------------------------------------------------------
+        if "توضیح" in notes_text:
+            transparency_violation = True
 
-        if ethical_notes:
+        if "حریم خصوصی" in notes_text or "gender" in notes_text:
+            privacy_violation = True
 
-            notes_text = str(ethical_notes)
+    # ========================================================
+    # حذف فعالیت‌های تکراری
+    # ========================================================
 
-            if "تبعیض" in notes_text:
-                fairness_violation = True
+     activities = self._unique(activities)
 
-            if "بازبینی" in notes_text or "اعتراض" in notes_text:
-                appeal_violation = True
+    # ========================================================
+    # پیدا کردن فعالیت‌های اصلی
+    # ========================================================
 
-            if "توضیح" in notes_text:
-                transparency_violation = True
+     registration = self._find_activity(
+        activities,
+        [
+            "ثبت درخواست",
+            "ثبت‌درخواست"
+        ]
+     )
 
-            if "حریم خصوصی" in notes_text or "gender" in notes_text:
-                privacy_violation = True
+     documents = self._find_activity(
+        activities,
+        [
+            "بررسی مدارک"
+        ]
+     )
 
-        # --------------------------------------------------------
-        # جلوگیری از اضافه شدن فعالیت‌های تکراری
-        # --------------------------------------------------------
+     financial = self._find_activity(
+        activities,
+        [
+            "ارزیابی نیاز مالی"
+        ]
+     )
 
-        activities = self._unique(activities)
+     approval = self._find_activity(
+        activities,
+        [
+            "تایید",
+            "تأیید",
+            "تایید درخواست",
+            "تأیید درخواست"
+        ]
+     )
 
-        # --------------------------------------------------------
-        # فعالیت‌های اصلی
-        # --------------------------------------------------------
+     rejection = self._find_activity(
+        activities,
+        [
+            "رد",
+            "رد درخواست"
+        ]
+     )
 
-        registration = self._find_activity(
-            activities,
-            ["ثبت درخواست", "ثبت‌درخواست"]
-        )
+     notification = self._find_activity(
+        activities,
+        [
+            "ابلاغ نتیجه"
+        ]
+     )
 
-        documents = self._find_activity(
-            activities,
-            ["بررسی مدارک"]
-        )
+    # ========================================================
+    # اگر ثبت درخواست پیدا نشد
+    # ========================================================
 
-        financial = self._find_activity(
-            activities,
-            ["ارزیابی نیاز مالی"]
-        )
+     if not registration and activities:
+        registration = activities[0]
 
-        approval = self._find_activity(
-            activities,
-            ["تایید", "تأیید", "تایید درخواست", "تأیید درخواست"]
-        )
+    # ========================================================
+    # فعالیت‌های عادی
+    # ========================================================
 
-        rejection = self._find_activity(
-            activities,
-            ["رد", "رد درخواست"]
-        )
+     normal_tasks = []
 
-        notification = self._find_activity(
-            activities,
-            ["ابلاغ نتیجه"]
-        )
+     for activity in activities:
 
-        # --------------------------------------------------------
-        # اگر فعالیت‌های اصلی پیدا نشدند، از ترتیب عمومی استفاده کن
-        # --------------------------------------------------------
+        if activity in {
+            registration,
+            approval,
+            rejection,
+            notification,
+        }:
+            continue
 
-        if not registration and activities:
-            registration = activities[0]
+        if activity not in normal_tasks:
+            normal_tasks.append(activity)
 
-        # --------------------------------------------------------
-        # حذف فعالیت‌های تصمیمی از ترتیب خطی
-        # --------------------------------------------------------
+    # ========================================================
+    # حذف فعالیت‌های اخلاقی از مسیر عادی
+    # ========================================================
 
-        normal_tasks = []
+     standard = []
 
-        for activity in activities:
-            if activity in {
-                registration,
-                approval,
-                rejection,
-                notification,
-            }:
-                continue
+     for activity in normal_tasks:
 
-            if activity not in normal_tasks:
-                normal_tasks.append(activity)
+        if activity in [
+            "بررسی تبعیض",
+            "درخواست بازبینی",
+            "بازبینی درخواست",
+            "تأیید پس از بازبینی",
+            "رد پس از بازبینی",
+        ]:
+            continue
 
-        # --------------------------------------------------------
-        # ساختن Start
-        # --------------------------------------------------------
+        standard.append(activity)
 
-        start = self._add_start(
-            "شروع",
-            x=80,
-            y=330
-        )
+    # ========================================================
+    # START
+    # ========================================================
 
-        current = start
+     start = self._add_start(
+        "شروع",
+        x=80,
+        y=330
+     )
 
-        # --------------------------------------------------------
-        # ثبت درخواست
-        # --------------------------------------------------------
+     current = start
 
-        if registration:
+    # ========================================================
+    # ثبت درخواست
+    # ========================================================
 
-            task = self._add_task(
-                registration,
-                self._ethical_documentation(registration),
-                x=180,
-                y=310
-            )
+     if registration:
 
-            self._add_flow(current, task)
-
-            current = task
-
-        # --------------------------------------------------------
-        # سایر فعالیت‌های استاندارد
-        # --------------------------------------------------------
-
-        standard = []
-
-        for activity in normal_tasks:
-
-            if activity == registration:
-                continue
-
-            if activity in [
-                "بررسی تبعیض",
-                "درخواست بازبینی",
-                "بازبینی درخواست",
-            ]:
-                continue
-
-            standard.append(activity)
-
-        x = 380
-
-        for activity in standard:
-
-            task = self._add_task(
-                activity,
-                self._ethical_documentation(activity),
-                x=x,
-                y=310
-            )
-
-            self._add_flow(current, task)
-
-            current = task
-            x += 210
-
-        # --------------------------------------------------------
-        # بررسی تبعیض
-        # --------------------------------------------------------
-
-        if fairness_violation:
-
-            fairness = self._add_task(
-                "بررسی تبعیض",
-                self._ethical_documentation("بررسی تبعیض"),
-                x=x,
-                y=310
-            )
-
-            self._add_flow(
-                current,
-                fairness
-            )
-
-            current = fairness
-            x += 210
-
-        # --------------------------------------------------------
-        # Gateway تصمیم
-        # --------------------------------------------------------
-
-        decision_gateway = self._add_gateway(
-            "XOR",
-            "تصمیم نهایی",
-            "این گیت تصمیم‌گیری را به مسیرهای تأیید و رد تفکیک می‌کند. "
-            "مسیر تصمیم نباید بر اساس متغیرهای حساس مانند جنسیت تعیین شود.",
-            x=x,
-            y=325
+        task = self._add_task(
+            registration,
+            self._ethical_documentation(registration),
+            x=180,
+            y=310
         )
 
         self._add_flow(
             current,
-            decision_gateway
+            task
         )
 
-        # --------------------------------------------------------
-        # Approval
-        # --------------------------------------------------------
+        current = task
 
-        approval_id = None
+    # ========================================================
+    # فعالیت‌های استاندارد
+    # ========================================================
 
-        if approval:
+     x = 380
 
-            approval_id = self._add_task(
-                approval,
-                self._ethical_documentation(approval),
-                x=x + 180,
-                y=190
-            )
+     for activity in standard:
 
-            self._add_flow(
-                decision_gateway,
-                approval_id,
-                condition="شرایط احراز شده است",
-                name="تأیید"
-            )
-
-        # --------------------------------------------------------
-        # Rejection
-        # --------------------------------------------------------
-
-        rejection_id = None
-
-        if rejection:
-
-            rejection_id = self._add_task(
-                rejection,
-                (
-                    self._ethical_documentation(rejection)
-                    + " دلیل تصمیم باید برای متقاضی قابل فهم باشد."
-                ),
-                x=x + 180,
-                y=470
-            )
-
-            self._add_flow(
-                decision_gateway,
-                rejection_id,
-                condition="شرایط احراز نشده است",
-                name="رد"
-            )
-
-        # --------------------------------------------------------
-        # اگر فقط یکی از مسیرها وجود داشت
-        # --------------------------------------------------------
-
-        if approval_id is None and rejection_id is None:
-
-            approval_id = self._add_task(
-                "تصمیم درخواست",
-                "تصمیم نهایی با رعایت عدالت و بدون استفاده مستقیم "
-                "از متغیرهای حساس اتخاذ می‌شود.",
-                x=x + 180,
-                y=310
-            )
-
-            self._add_flow(
-                decision_gateway,
-                approval_id
-            )
-
-        # --------------------------------------------------------
-        # مسیر رد → توضیح → درخواست بازبینی
-        # --------------------------------------------------------
-
-        appeal_request = None
-        appeal_review = None
-
-        if rejection_id:
-
-            # حتی اگر تخلف Appeal وجود داشته باشد، این مسیر ساخته می‌شود
-            if appeal_violation:
-
-                appeal_request = self._add_task(
-                    "درخواست بازبینی",
-                    self._ethical_documentation("درخواست بازبینی"),
-                    x=x + 400,
-                    y=470
-                )
-
-                self._add_flow(
-                    rejection_id,
-                    appeal_request,
-                    condition="متقاضی درخواست بازبینی دارد",
-                    name="درخواست بازبینی"
-                )
-
-                appeal_review = self._add_task(
-                    "بازبینی درخواست",
-                    self._ethical_documentation("بازبینی درخواست"),
-                    x=x + 620,
-                    y=470
-                )
-
-                self._add_flow(
-                    appeal_request,
-                    appeal_review
-                )
-
-        # --------------------------------------------------------
-        # ابلاغ نتیجه
-        # --------------------------------------------------------
-
-        if notification:
-
-            notification_id = self._add_task(
-                notification,
-                self._ethical_documentation(notification),
-                x=x + 620,
-                y=300
-            )
-
-        else:
-
-            notification_id = self._add_task(
-                "ابلاغ نتیجه",
-                self._ethical_documentation("ابلاغ نتیجه"),
-                x=x + 620,
-                y=300
-            )
-
-        # --------------------------------------------------------
-        # Approval → notification
-        # --------------------------------------------------------
-
-        if approval_id:
-            self._add_flow(
-                approval_id,
-                notification_id
-            )
-
-        # --------------------------------------------------------
-        # Rejection → notification
-        # --------------------------------------------------------
-
-        if rejection_id:
-
-            self._add_flow(
-                rejection_id,
-                notification_id,
-                condition="عدم درخواست بازبینی",
-                name="ابلاغ نتیجه رد"
-            )
-
-        # --------------------------------------------------------
-        # Appeal review → notification
-        # --------------------------------------------------------
-
-        if appeal_review:
-
-            self._add_flow(
-                appeal_review,
-                notification_id,
-                name="نتیجه بازبینی"
-            )
-
-        # --------------------------------------------------------
-        # End
-        # --------------------------------------------------------
-
-        end = self._add_end(
-            "پایان",
-            x=x + 850,
-            y=330
+        task = self._add_task(
+            activity,
+            self._ethical_documentation(activity),
+            x=x,
+            y=310
         )
 
         self._add_flow(
-            notification_id,
-            end
+            current,
+            task
         )
 
-        return start, end
+        current = task
 
+        x += 210
+
+    # ========================================================
+    # بررسی تبعیض
+    # ========================================================
+
+     if fairness_violation:
+
+        fairness = self._add_task(
+            "بررسی تبعیض",
+            (
+                "این فعالیت برای جلوگیری از تبعیض طراحی شده است. "
+                "متغیرهای حساس مانند جنسیت نباید مستقیماً "
+                "در تصمیم‌گیری استفاده شوند."
+            ),
+            x=x,
+            y=310
+        )
+
+        self._add_flow(
+            current,
+            fairness
+        )
+
+        current = fairness
+
+        x += 210
+
+    # ========================================================
+    # XOR تصمیم اولیه
+    # ========================================================
+
+     decision_gateway = self._add_gateway(
+        "XOR",
+        "تصمیم نهایی",
+        (
+            "این گیت تصمیم‌گیری را به مسیرهای تأیید و رد "
+            "تفکیک می‌کند. مسیر تصمیم نباید بر اساس "
+            "متغیرهای حساس مانند جنسیت تعیین شود."
+        ),
+        x=x,
+        y=325
+     )
+
+     self._add_flow(
+        current,
+        decision_gateway
+     )
+
+    # ========================================================
+    # مسیر تأیید اولیه
+    # ========================================================
+
+     approval_id = None
+
+     if approval:
+
+        approval_id = self._add_task(
+            approval,
+            self._ethical_documentation(approval),
+            x=x + 180,
+            y=190
+        )
+
+        self._add_flow(
+            decision_gateway,
+            approval_id,
+            condition="شرایط احراز شده است",
+            name="تأیید"
+        )
+
+    # ========================================================
+    # مسیر رد اولیه
+    # ========================================================
+
+     rejection_id = None
+
+     if rejection:
+
+        rejection_id = self._add_task(
+            rejection,
+            (
+                self._ethical_documentation(rejection)
+                + " دلیل تصمیم باید برای متقاضی قابل فهم باشد."
+            ),
+            x=x + 180,
+            y=470
+        )
+
+        self._add_flow(
+            decision_gateway,
+            rejection_id,
+            condition="شرایط احراز نشده است",
+            name="رد"
+        )
+
+    # ========================================================
+    # اگر تأیید و رد وجود نداشتند
+    # ========================================================
+
+     if approval_id is None and rejection_id is None:
+
+        approval_id = self._add_task(
+            "تصمیم درخواست",
+            (
+                "تصمیم نهایی با رعایت عدالت و بدون استفاده "
+                "مستقیم از متغیرهای حساس اتخاذ می‌شود."
+            ),
+            x=x + 180,
+            y=310
+        )
+
+        self._add_flow(
+            decision_gateway,
+            approval_id
+        )
+
+    # ========================================================
+    # متغیرهای مربوط به Appeal
+    # ========================================================
+
+     appeal_request = None
+     appeal_review = None
+
+     appeal_gateway = None
+     appeal_approval = None
+     appeal_rejection = None
+
+    # ========================================================
+    # مسیر اعتراض
+    #
+    # رد اولیه
+    #     ↓
+    # درخواست بازبینی
+    #     ↓
+    # بازبینی درخواست
+    #     ↓
+    # XOR تصمیم مجدد
+    #     ↙       ↘
+    #   تأیید      رد
+    # ========================================================
+
+     if rejection_id and appeal_violation:
+
+        # ----------------------------------------------------
+        # درخواست بازبینی
+        # ----------------------------------------------------
+
+        appeal_request = self._add_task(
+            "درخواست بازبینی",
+            (
+                "این فعالیت برای تضمین قابلیت اعتراض متقاضی "
+                "و فراهم کردن مسیر رسمی درخواست تجدیدنظر "
+                "ایجاد شده است."
+            ),
+            x=x + 400,
+            y=470
+        )
+
+        self._add_flow(
+            rejection_id,
+            appeal_request,
+            condition="متقاضی درخواست بازبینی دارد",
+            name="درخواست بازبینی"
+        )
+
+        # ----------------------------------------------------
+        # بازبینی مستقل
+        # ----------------------------------------------------
+
+        appeal_review = self._add_task(
+            "بازبینی درخواست",
+            (
+                "این فعالیت برای بررسی مستقل درخواست تجدیدنظر "
+                "و افزایش پاسخ‌گویی فرآیند ایجاد شده است."
+            ),
+            x=x + 620,
+            y=470
+        )
+
+        self._add_flow(
+            appeal_request,
+            appeal_review,
+            name="ارجاع برای بازبینی"
+        )
+
+        # ----------------------------------------------------
+        # XOR تصمیم پس از بازبینی
+        # ----------------------------------------------------
+
+        appeal_gateway = self._add_gateway(
+            "XOR",
+            "تصمیم نهایی پس از بازبینی",
+            (
+                "این گیت نتیجه بازبینی مستقل را بررسی می‌کند. "
+                "تصمیم مجدد باید بر اساس معیارهای مرتبط با "
+                "شرایط مالی و شرایط احراز باشد و نباید بر اساس "
+                "متغیرهای حساس مانند جنسیت اتخاذ شود."
+            ),
+            x=x + 800,
+            y=495
+        )
+
+        self._add_flow(
+            appeal_review,
+            appeal_gateway,
+            name="نتیجه بازبینی"
+        )
+
+        # ----------------------------------------------------
+        # تأیید پس از بازبینی
+        # ----------------------------------------------------
+
+        appeal_approval = self._add_task(
+            "تأیید پس از بازبینی",
+            (
+                "درخواست پس از بازبینی تأیید شده است. "
+                "تصمیم بر اساس معیارهای مرتبط با شرایط "
+                "احراز و بدون تبعیض اتخاذ شده است."
+            ),
+            x=x + 980,
+            y=390
+        )
+
+        self._add_flow(
+            appeal_gateway,
+            appeal_approval,
+            condition="شرایط پس از بازبینی احراز شده است",
+            name="تأیید پس از بازبینی"
+        )
+
+        # ----------------------------------------------------
+        # رد پس از بازبینی
+        # ----------------------------------------------------
+
+        appeal_rejection = self._add_task(
+            "رد پس از بازبینی",
+            (
+                "درخواست پس از بازبینی نیز رد شده است. "
+                "دلیل رد باید به صورت شفاف و قابل فهم "
+                "برای متقاضی ثبت و اعلام شود."
+            ),
+            x=x + 980,
+            y=570
+        )
+
+        self._add_flow(
+            appeal_gateway,
+            appeal_rejection,
+            condition="شرایط پس از بازبینی احراز نشده است",
+            name="رد پس از بازبینی"
+        )
+
+    # ========================================================
+    # ابلاغ نتیجه
+    # ========================================================
+
+     if notification:
+
+        notification_id = self._add_task(
+            notification,
+            self._ethical_documentation(notification),
+            x=x + 620,
+            y=300
+        )
+
+     else:
+
+        notification_id = self._add_task(
+            "ابلاغ نتیجه",
+            self._ethical_documentation("ابلاغ نتیجه"),
+            x=x + 620,
+            y=300
+        )
+
+    # ========================================================
+    # تأیید اولیه → ابلاغ
+    # ========================================================
+
+     if approval_id:
+
+        self._add_flow(
+            approval_id,
+            notification_id,
+            name="ابلاغ نتیجه تأیید"
+        )
+
+    # ========================================================
+    # رد اولیه → ابلاغ
+    #
+    # این مسیر فقط زمانی طی می‌شود که اعتراض انجام نشود.
+    # ========================================================
+
+     if rejection_id:
+
+        self._add_flow(
+            rejection_id,
+            notification_id,
+            condition="متقاضی درخواست بازبینی ندارد",
+            name="ابلاغ نتیجه رد"
+        )
+
+    # ========================================================
+    # تأیید پس از بازبینی → ابلاغ
+    # ========================================================
+
+     if appeal_approval:
+
+        self._add_flow(
+            appeal_approval,
+            notification_id,
+            name="ابلاغ تأیید پس از بازبینی"
+        )
+
+    # ========================================================
+    # رد پس از بازبینی → ابلاغ
+    # ========================================================
+
+     if appeal_rejection:
+
+        self._add_flow(
+            appeal_rejection,
+            notification_id,
+            name="ابلاغ رد پس از بازبینی"
+        )
+
+    # ========================================================
+    # END
+    # ========================================================
+
+     end = self._add_end(
+        "پایان",
+        x=x + 850,
+        y=330
+     )
+
+     self._add_flow(
+        notification_id,
+        end
+     )
+
+     return start, end
     # ============================================================
     # Find activity
     # ============================================================
