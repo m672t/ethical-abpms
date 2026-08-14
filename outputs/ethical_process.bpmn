@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Ethical_ABPMS" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_Ethical_ABPMS" name="فرآیند کمک مالی دانشجویی" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="شروع"/>
+    <bpmn:task id="Activity_2" name="ثبت درخواست">
+      <bpmn:documentation>این فعالیت با رعایت اصول اخلاقی A-BPMS طراحی شده است.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_3" name="بررسی مدارک">
+      <bpmn:documentation>این فعالیت با رعایت اصول اخلاقی A-BPMS طراحی شده است.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_4" name="ارزیابی نیاز مالی">
+      <bpmn:documentation>این فعالیت با رعایت اصول اخلاقی A-BPMS طراحی شده است.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_5" name="بررسی تبعیض">
+      <bpmn:documentation>این فعالیت برای جلوگیری از تبعیض طراحی شده است. متغیرهای حساس مانند جنسیت نباید مستقیماً در تصمیم‌گیری استفاده شوند.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="ExclusiveGateway_6" name="تصمیم نهایی">
+      <bpmn:documentation>این گیت تصمیم‌گیری را به مسیرهای تأیید و رد تفکیک می‌کند. مسیر تصمیم نباید بر اساس متغیرهای حساس مانند جنسیت تعیین شود.</bpmn:documentation>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Activity_7" name="تأیید">
+      <bpmn:documentation>این فعالیت با رعایت اصول اخلاقی A-BPMS طراحی شده است.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_8" name="رد">
+      <bpmn:documentation>این فعالیت با رعایت اصول اخلاقی A-BPMS طراحی شده است. دلیل تصمیم باید برای متقاضی قابل فهم باشد.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_9" name="درخواست بازبینی">
+      <bpmn:documentation>این فعالیت برای تضمین قابلیت اعتراض متقاضی و فراهم کردن مسیر رسمی درخواست تجدیدنظر ایجاد شده است.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_10" name="بازبینی درخواست">
+      <bpmn:documentation>این فعالیت برای بررسی مستقل درخواست تجدیدنظر و افزایش پاسخ‌گویی فرآیند ایجاد شده است.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="ExclusiveGateway_11" name="تصمیم نهایی پس از بازبینی">
+      <bpmn:documentation>این گیت نتیجه بازبینی مستقل را بررسی می‌کند. تصمیم مجدد باید بر اساس معیارهای مرتبط با شرایط مالی و شرایط احراز باشد و نباید بر اساس متغیرهای حساس مانند جنسیت اتخاذ شود.</bpmn:documentation>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Activity_12" name="تأیید پس از بازبینی">
+      <bpmn:documentation>درخواست پس از بازبینی تأیید شده است. تصمیم بر اساس معیارهای مرتبط با شرایط احراز و بدون تبعیض اتخاذ شده است.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_13" name="رد پس از بازبینی">
+      <bpmn:documentation>درخواست پس از بازبینی نیز رد شده است. دلیل رد باید به صورت شفاف و قابل فهم برای متقاضی ثبت و اعلام شود.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:task id="Activity_14" name="ابلاغ نتیجه">
+      <bpmn:documentation>نتیجه تصمیم باید به‌صورت شفاف و قابل فهم به متقاضی ابلاغ شود.</bpmn:documentation>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_15" name="پایان"/>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Activity_2"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Activity_2" targetRef="Activity_3"/>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Activity_3" targetRef="Activity_4"/>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Activity_4" targetRef="Activity_5"/>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Activity_5" targetRef="ExclusiveGateway_6"/>
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="ExclusiveGateway_6" targetRef="Activity_7" name="تأیید">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">شرایط احراز شده است</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="ExclusiveGateway_6" targetRef="Activity_8" name="رد">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">شرایط احراز نشده است</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Activity_8" targetRef="Activity_9" name="درخواست بازبینی">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">متقاضی درخواست بازبینی دارد</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Activity_9" targetRef="Activity_10" name="ارجاع برای بازبینی"/>
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Activity_10" targetRef="ExclusiveGateway_11" name="نتیجه بازبینی"/>
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="ExclusiveGateway_11" targetRef="Activity_12" name="تأیید پس از بازبینی">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">شرایط پس از بازبینی احراز شده است</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="ExclusiveGateway_11" targetRef="Activity_13" name="رد پس از بازبینی">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">شرایط پس از بازبینی احراز نشده است</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_13" sourceRef="Activity_7" targetRef="Activity_14" name="ابلاغ نتیجه تأیید"/>
+    <bpmn:sequenceFlow id="Flow_14" sourceRef="Activity_8" targetRef="Activity_14" name="ابلاغ نتیجه رد">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">متقاضی درخواست بازبینی ندارد</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_15" sourceRef="Activity_12" targetRef="Activity_14" name="ابلاغ تأیید پس از بازبینی"/>
+    <bpmn:sequenceFlow id="Flow_16" sourceRef="Activity_13" targetRef="Activity_14" name="ابلاغ رد پس از بازبینی"/>
+    <bpmn:sequenceFlow id="Flow_17" sourceRef="Activity_14" targetRef="EndEvent_15"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Ethical_ABPMS">
+    <bpmndi:BPMNPlane id="BPMNPlane_Ethical_ABPMS" bpmnElement="Process_Ethical_ABPMS">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="80" y="330" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_2_di" bpmnElement="Activity_2">
+        <dc:Bounds x="180" y="310" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_3_di" bpmnElement="Activity_3">
+        <dc:Bounds x="380" y="310" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_4_di" bpmnElement="Activity_4">
+        <dc:Bounds x="590" y="310" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_5_di" bpmnElement="Activity_5">
+        <dc:Bounds x="800" y="310" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ExclusiveGateway_6_di" bpmnElement="ExclusiveGateway_6">
+        <dc:Bounds x="1010" y="325" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_7_di" bpmnElement="Activity_7">
+        <dc:Bounds x="1190" y="190" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_8_di" bpmnElement="Activity_8">
+        <dc:Bounds x="1230" y="520" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_9_di" bpmnElement="Activity_9">
+        <dc:Bounds x="1460" y="520" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_10_di" bpmnElement="Activity_10">
+        <dc:Bounds x="1690" y="520" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ExclusiveGateway_11_di" bpmnElement="ExclusiveGateway_11">
+        <dc:Bounds x="1910" y="535" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_12_di" bpmnElement="Activity_12">
+        <dc:Bounds x="2110" y="380" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_13_di" bpmnElement="Activity_13">
+        <dc:Bounds x="2110" y="650" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_14_di" bpmnElement="Activity_14">
+        <dc:Bounds x="2360" y="380" width="150" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_15_di" bpmnElement="EndEvent_15">
+        <dc:Bounds x="2580" y="400" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="116" y="348.0"/>
+        <di:waypoint x="180" y="350.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="330" y="350.0"/>
+        <di:waypoint x="380" y="350.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="530" y="350.0"/>
+        <di:waypoint x="590" y="350.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="740" y="350.0"/>
+        <di:waypoint x="800" y="350.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="950" y="350.0"/>
+        <di:waypoint x="1010" y="350.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1060" y="350.0"/>
+        <di:waypoint x="1125.0" y="350.0"/>
+        <di:waypoint x="1125.0" y="230.0"/>
+        <di:waypoint x="1190" y="230.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1060" y="350.0"/>
+        <di:waypoint x="1145.0" y="350.0"/>
+        <di:waypoint x="1145.0" y="560.0"/>
+        <di:waypoint x="1230" y="560.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1380" y="560.0"/>
+        <di:waypoint x="1460" y="560.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1610" y="560.0"/>
+        <di:waypoint x="1690" y="560.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="1840" y="560.0"/>
+        <di:waypoint x="1910" y="560.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="1960" y="560.0"/>
+        <di:waypoint x="2035.0" y="560.0"/>
+        <di:waypoint x="2035.0" y="420.0"/>
+        <di:waypoint x="2110" y="420.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12_di" bpmnElement="Flow_12">
+        <di:waypoint x="1960" y="560.0"/>
+        <di:waypoint x="2035.0" y="560.0"/>
+        <di:waypoint x="2035.0" y="690.0"/>
+        <di:waypoint x="2110" y="690.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13_di" bpmnElement="Flow_13">
+        <di:waypoint x="1340" y="230.0"/>
+        <di:waypoint x="1850.0" y="230.0"/>
+        <di:waypoint x="1850.0" y="420.0"/>
+        <di:waypoint x="2360" y="420.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_14_di" bpmnElement="Flow_14">
+        <di:waypoint x="1380" y="560.0"/>
+        <di:waypoint x="1870.0" y="560.0"/>
+        <di:waypoint x="1870.0" y="420.0"/>
+        <di:waypoint x="2360" y="420.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_15_di" bpmnElement="Flow_15">
+        <di:waypoint x="2260" y="420.0"/>
+        <di:waypoint x="2360" y="420.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16_di" bpmnElement="Flow_16">
+        <di:waypoint x="2260" y="690.0"/>
+        <di:waypoint x="2310.0" y="690.0"/>
+        <di:waypoint x="2310.0" y="420.0"/>
+        <di:waypoint x="2360" y="420.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_17_di" bpmnElement="Flow_17">
+        <di:waypoint x="2510" y="420.0"/>
+        <di:waypoint x="2580" y="418.0"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
